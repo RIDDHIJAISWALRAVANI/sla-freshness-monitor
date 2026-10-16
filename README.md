@@ -46,30 +46,53 @@ sla-freshness-monitor/
 │   ├── database.py
 │   ├── monitor.py
 │   ├── freshness.py
+│   ├── validation.py
 │   └── incident_generator.py
 ├── tests/
 │   ├── test_monitor.py
-│   └── test_incident.py
+│   ├── test_incident.py
+│   └── test_validation.py
 └── docs/
     └── design_decision_note.md
 ```
 
-## Setup
+## How to set up, run, and test
 
 Python 3.9 or newer is recommended.
 
+From the project directory, install the only development dependency, `pytest`:
+
 ```powershell
-cd sla-freshness-monitor
 python -m pip install -r requirements.txt
 ```
 
-## How to run
+Run the monitor against the included synthetic CSV data:
 
 ```powershell
 python src/main.py
 ```
 
 The command creates `monitor.db` in the project folder. Running it again adds new history instead of deleting earlier runs.
+
+Run the complete automated test suite:
+
+```powershell
+python -m pytest
+```
+
+## Data validation
+
+Input rows are validated before monitoring results are calculated. Pipeline names must be unique, expected times and timestamps must use the documented formats, and SLA values must be positive integers. Each arrival must reference a configured pipeline, and duplicate arrivals for the same pipeline and run date are rejected. A blank `actual_arrival` is intentionally accepted and classified as `MISSING`.
+
+## Data model
+
+SQLite stores the monitoring data in three tables:
+
+- `pipeline_config` contains one configuration row per pipeline. `pipeline_name` is unique, and reruns update its expected time and SLA tolerance.
+- `pipeline_runs` stores each monitoring observation, including the expected and actual arrival times, SLA status, delay, freshness, and check time. Repeated executions append history rather than replacing earlier observations.
+- `incidents` stores the message created for each breached or missing run. Its `run_id` foreign key links the incident to the corresponding row in `pipeline_runs`.
+
+The logical flow is `pipeline_config` → `pipeline_runs` → `incidents`. Table definitions are available in `sql/schema.sql`, and example history and incident queries are in `sql/queries.sql`.
 
 ## SLA calculation
 
@@ -103,11 +126,9 @@ Incidents created: 2
 
 Incident details are printed below the table for `BREACHED` and `MISSING` pipelines.
 
-## How to run tests
+## Tests performed
 
-```powershell
-python -m pytest
-```
+The automated suite covers healthy early data, late data, missing data, the exact SLA deadline, incident evidence, duplicate arrivals, duplicate pipeline configuration, unknown pipelines, malformed timestamps, and zero, negative, or non-numeric SLA values. The verified result is `12 passed`.
 
 ## Design decisions
 
@@ -115,4 +136,4 @@ The project uses only Python standard-library modules at runtime. CSV keeps the 
 
 ## Limitations and production improvements
 
-This assignment-scale project assumes valid input, a single local timezone, and manual execution. A production version could use timezone-aware timestamps, a scheduler or orchestrator, PostgreSQL, real pipeline metadata, and an external alerting channel.
+This assignment-scale project uses strict input formats, a single local timezone, and manual execution. A production version could use timezone-aware timestamps, a scheduler or orchestrator, PostgreSQL, real pipeline metadata, and an external alerting channel.

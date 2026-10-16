@@ -6,6 +6,7 @@ from database import initialize_database, save_incident, save_pipeline_config, s
 from freshness import calculate_freshness
 from incident_generator import generate_incident
 from monitor import evaluate_sla
+from validation import validate_arrivals, validate_configs
 
 
 DATE_TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -18,10 +19,13 @@ def main():
     arrivals_path = project_dir / "data" / "sample_arrivals.csv"
     schema_path = project_dir / "sql" / "schema.sql"
 
-    initialize_database(database_path, schema_path)
-
     with config_path.open(newline="", encoding="utf-8") as file:
-        configs = {row["pipeline_name"]: row for row in csv.DictReader(file)}
+        configs = validate_configs(csv.DictReader(file))
+
+    with arrivals_path.open(newline="", encoding="utf-8") as file:
+        arrivals = validate_arrivals(csv.DictReader(file), configs)
+
+    initialize_database(database_path, schema_path)
 
     for config in configs.values():
         save_pipeline_config(
@@ -30,9 +34,6 @@ def main():
             config["expected_time"],
             int(config["sla_minutes"]),
         )
-
-    with arrivals_path.open(newline="", encoding="utf-8") as file:
-        arrivals = list(csv.DictReader(file))
 
     results = []
     incidents = []
