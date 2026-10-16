@@ -1,0 +1,4 @@
+pipeline_name,run_date,actual_arrival,checked_at
+customer_daily,2026-10-16,2026-10-16 05:57:00,2026-10-16 15:00:00
+orders_hourly,2026-10-16,2026-10-16 14:26:00,2026-10-16 15:00:00
+payments_daily,2026-10-16,,2026-10-16 15:00:00

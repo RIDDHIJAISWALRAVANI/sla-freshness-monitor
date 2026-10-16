@@ -1,0 +1,4 @@
+pipeline_name,expected_time,sla_minutes
+customer_daily,06:00,10
+orders_hourly,14:10,10
+payments_daily,08:00,15
